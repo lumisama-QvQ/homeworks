@@ -38,15 +38,14 @@ Student* search_by_name();
 Student* search_by_number();
 Student* total_and_average();
 Student* statistic_analysis();
-float* total(Subject *subjects, int subject_number);
+float total(Subject *subjects, int subject_number);
 char* sort();
 Student* input_record();
 
-//数组处理
+//数据处理
 void add_student(Student **arr, int *count, int *capacity,const unsigned char *name, Subject *subjects);
 void format();
 void delete();
-
 
 int main(void) {
     printf("1.Input record\n2.Calculate total and average scoreof every course\n3.Calculate total and average score of every student\n4. Sort in descending order by total score of every student\n5. Sort in ascending order by total score of every student\n6. Sort in ascending order by number\n7. Sort in dictionary order by name\n8. Search by number\n9. Search by name\n10.Statistic analysis for every course\n11.List record\n12.Write to a file\n13.Read from file\n0.Exit\nPlease enter your choice:");
@@ -70,15 +69,11 @@ int main(void) {
             case 0 :{
                 nanosleep(&req,NULL);
                 printf("Exiting");
-                fflush(stdout);
-                nanosleep(&req,NULL);
-                printf(".");
-                fflush(stdout);
-                nanosleep(&req,NULL);
-                printf(".");
-                fflush(stdout);
-                nanosleep(&req,NULL);
-                printf(".\n");                
+                for(int i = 0; i < 3; i++){
+                    fflush(stdout);
+                    nanosleep(&req,NULL);
+                    printf(".");
+                }               
                 exit(0);
             };
             case 1 :{
@@ -89,47 +84,59 @@ int main(void) {
     return 0;
 }
 
-//姓名 语 分数 数 分数 英 分数 物 分数 化 分数 生 分数
+//eg: 姓名 语 分数 数 分数 英 分数 物 分数 化 分数 生 分数
 //输入考试科目数量，各名称。
 Student* input_record() {
     int subject_number = 0;
-    float subject_score;
     bool attend;
-    int count = 0;
     int capacity = 0;
-    Student students;
-
-
+    Student *students;
     printf("You choose input record.\n");
     printf("Please input subject number:");
     fflush(stdout);
     scanf("%d", &subject_number);
     getchar();
-    Subject *subjects = (Subject *)malloc(sizeof(Subject) * subject_number);
+    unsigned char *subjects_name = NULL;
 
     //课程录入
     printf("Now please input name of subjects by whitespace.\n");
     printf(">>>");
     fflush(stdout);
     for (int i = 0; i < subject_number; i++) {
-        if (scanf("%ms", &subjects[i].name) != 1) {
+        //异常，待解决
+        if (scanf("%ms", &subjects_name[i]) != 1) {
             printf("Error: Not enough memory!\n");
             exit(1);
         }
     }
     printf("Enture your input.\n");
     for (int i = 0;i < subject_number; i++) {
-        printf("%s ", subjects[i].name);
+        printf("%s ", subjects_name);
     }
 
-
+    //学生录入
     printf("\n");
-    printf("Please input student's name and each subject score follow the order you input by whitespace.");
-    for(int student_order = 0;;student_order++) {
+    printf("Please input student's name and each subject score follow the order you input by whitespace.\n");
+    for(int student_count = 0;;student_count++) {
         printf(">>>");
         fflush(stdout);
-
-
+        unsigned char *student_name;
+        scanf("%ms", student_name);
+        Subject *temp = (Subject *)malloc(sizeof(Subject) * subject_number);
+        getchar();
+        for(int i = 0; i < subject_number; i++){
+            float total = 0.0;
+            scanf("%f", temp[i].score);
+            temp[i].name = &subjects_name[i];
+            if (temp[i].score == -1.0) {
+                temp[i].attend = false;
+            }
+            else {
+                temp[i].attend = true;
+                total += temp->score;
+            }
+        }
+        add_student(&students, &student_count, &capacity, student_name, temp);
     }
     }
 
@@ -137,6 +144,7 @@ void add_student(Student **arr, int *count, int *capacity,const unsigned char *n
                     //动态扩容
                     if (*count >= *capacity) {
                         int new_capacity = (*capacity == 0) ? 4 : (*capacity * 2);
+                        //异常，待处理
                         Student *temp = (Student *)realloc(*arr, new_capacity * sizeof(Student));
                         if (temp == NULL) {
                             printf("Error: Not enough memory!");
@@ -152,11 +160,10 @@ void add_student(Student **arr, int *count, int *capacity,const unsigned char *n
                     }
                     strcpy((char *)target->name, name);
                     target->Subject = subjects;
-
                     (*count)++;
                 }
 
-float* total(Subject *subjects, int subject_number) {
+float total(Subject *subjects, int subject_number) {
     float result = 0.0;
     for (int i = 0; i < subject_number; i++){
         if (subjects->attend == false) {
@@ -164,5 +171,5 @@ float* total(Subject *subjects, int subject_number) {
         }
         result += subjects->score;
     }
-    return &result;
+    return result;
 }
