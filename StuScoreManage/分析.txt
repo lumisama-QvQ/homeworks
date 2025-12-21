@@ -22,7 +22,7 @@
     在一个学生输入完成后立即计算总分和平均分
     每次修改了学生学科后立即和单独维护的学科列表对比
     分数设置为-1为缺考
-    同时
+    增加延时函数增加动感
     交互预计：
         1.学生和科目的输入：
             - 默认的学科数量和学科名称
@@ -75,7 +75,7 @@
             参加的学科数量: int
         学科：
             学科名：char*
-            学科总分：float
+            学科总分：int
             学科分数：float
         学科维护列表：
             学科名：char*
@@ -83,22 +83,35 @@
             学科实际人数：int
             累计总分数： float
             分数统计：int[5]
-
+		等级：
+			优：int
+			良：int
+			正常：int
+			及格：int
+			差： int
     需要函数：
         主菜单打印(void)
-        输入学科(*struct 学科)
-        修改学科(*struct 学科)
-        删除学科(*struct 学科，int 删除序号)
-        替换学科(*struct 学科, int 替换序号, *struct 替换学科)
-        添加学科(*struct 学科, *struct 添加的学科)
-        添加学生(*struct 学生, *struct 学科, *char 姓名, int 学科数量, float 总分,int 实际参与)
-        更新维护列表(*struct 维护列表, *struct 学生)
-        排名系统(*struct 学生)
-        查询系统(*void 内容， *struct 学生)
+        输入学科(**struct 学科)
+        删除学科(**struct 学科，int 删除序号)
+        替换学科(**struct 学科, int 替换序号, *struct 替换学科)
+        添加学科(**struct 学科, *struct 添加的学科)
+        添加学生(**struct 学生, *struct 学科, *char 姓名, int 学科数量, float 总分,int 实际参与)
+        更新维护列表(**struct 维护列表, *struct 学生)
+        排名系统(*struct 学生， 模式)
+        成绩表系统(unsigned int 模式, *struct 学生)
+        查询系统(*void 内容， *struct 学生，unsigned int 查询模式)
         输出学生数据(*struct 学生)
         输出学科数据(*struct 维护列表)
         写入文档(*struct 学生)
         读取文档并显示(char *文件位置)
+        延时函数(int 毫秒)
+    全局标签：
+    	升降序
+    		- 升序
+    		- 降序
+    	查询模式
+    		- 按名字
+    		- 按学号
 
 要求:
 要求程序运行后先显示如下菜单，并提示用户输入选项
