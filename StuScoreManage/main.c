@@ -99,7 +99,7 @@ int main(void){
             case 1: {
                 //subjects需主动free
                 def_sub(&subjects);
-                
+
             }
             case 2: {}
             case 3: {}
@@ -259,6 +259,7 @@ void ft_stdout(void) {
 }
 int def_sub(SUBJECT **subjects) {
     printf("Enter default subject number\n");
+    int num = 0;
     while(1) {
         ft_stdout();
         wchar_t c = getchar();
@@ -267,7 +268,7 @@ int def_sub(SUBJECT **subjects) {
             continue;
         } else {
             ungetc(c, stdin);
-            int num = *(int *)input_c(UINT);
+            num = *(int *)input_c(UINT);
             printf("Enter the subject name and total score, separated by a space.\n");
             while (1) {
                 wchar_t c2 = getchar();
@@ -281,13 +282,15 @@ int def_sub(SUBJECT **subjects) {
                     *subjects = (SUBJECT *)malloc(sizeof(SUBJECT) * num);
                     for (int i = 0; i < num ; i++) {
                         wchar_t *name = input_c(STRING);
-                        int *def_score = input_c(UINT);
                         wcscpy(subject->name, name);
+                        int *def_score = input_c(UINT);
                         subject->score = *def_score;
                         add_sub(subjects, subject, &count, &capacity);
                     }
+                    break;
                 }
-            }
+            } break;
         }
     }
+    return num;
 }
