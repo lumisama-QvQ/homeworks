@@ -7,7 +7,6 @@
 #include <wchar.h>
 #include <wctype.h>
 #include <locale.h>
-#include <limits.h>
 
 //升降序模式
 #define ASCEND (1U << 0)
@@ -67,7 +66,7 @@ void sleep(unsigned int);//单位毫秒,不能超过1000
 int compare(void*, void*, unsigned int);
 void free_memory(void);
 void* input_c(unsigned int);
-void ft_stdout();
+void ft_stdout(void);
 
 int main(void){
     //init
@@ -142,75 +141,69 @@ void menu(void){
 void* input_c(unsigned int agr) {
     void *result = NULL;
     if (agr == UINT){
-        result = (long int *)malloc(sizeof(long int));
-        char buffer[100];
+        result = (int *)malloc(sizeof(int));
         while (1) {
-            if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-                while (getchar() != '\n');
+            int c = getchar();//check
+            if (c == '\n' || c == ' ') {
                 sleep(999);
-                printf("Some thing wrong!\n");
-            }else {
-                if (buffer[0] == '\n') {
+                printf("Cannot be empty!\n");
+            } else {
+                ungetc(c, stdin);
+                if (scanf("%d", (int *)result) != 1){
                     sleep(999);
-                    printf("Cannot be empty!\n");
-                }else {
-                    long int temp;
-                    if (sscanf(buffer, "%ld", &temp) != 1) {
-                        while (getchar() != '\n');
+                    printf("Please enter a positive integer!\n");
+                } else {
+                    if ( *(int *)result < 0 ) {
                         sleep(999);
-                        printf("Please enter a positive integer!\n");
-                    } else {
-                        if ( temp < 0 || temp > UINT_MAX) {
-                            sleep(999);
-                            printf("Please enter a positive integer\n");
-                        } else {
-                            *(unsigned int *)result = (unsigned int)temp;
-                            break;
-                        }
+                        printf("Please enter a positive integer\n");
+                    } else break;
                     }
                 }
+                ft_stdout();
             }
-            ft_stdout();
-        }
-    } else if (agr == INT){
+        } else if (agr == INT){
         result = (int *)malloc(sizeof(int));
         while(1){
-        int check = scanf("%d", (int *)result);
-        if (check != 1) {
+        int c = getchar();
+        if (c == '\n') {
             sleep(999);
-            printf("Please enter the number!\n");
-            ft_stdout();
-            while (getchar() != '\n');
-        } else break;
+            printf("cannot be empty!\n");
+        } else {
+            ungetc(c, stdin);
+            if (scanf("%d", (int *)result) != 1){
+                sleep(999);
+                printf("Please enter a positive integer!\n");
+            } else break;
+        };
+        ft_stdout();
         }
     } else if (agr == STRING){
-        result = (wchar_t *)malloc(sizeof(wchar_t) * 20);
+        result = (wchar_t *)malloc(sizeof(wchar_t) * 20);//最多10个汉字
         while (1){
-            if (fgetws((wchar_t *)result, 20, stdin) != NULL) {
-                ((wchar_t *)result)[wcscspn((wchar_t *)result, L"\n")] = L'\0';
-                if (wcslen((wchar_t *)result) == 0){
-                    sleep(999);
-                    printf("Cannot be empty!\n");
-                    ft_stdout();
-                } else {
-                    wchar_t *buffer = result;
-                    while ((*buffer != L'\0')) {
-                        if (iswalnum(buffer == 0)) {
-                            sleep(999);
-                            printf("Illegal characters!\n");
-                            ft_stdout();
-                            break;
+            wchar_t c = getchar();
+            if (c == '\n') {
+                sleep(999);
+                printf("Cannot be empty!\n");
+            } else {
+                ungetc(c, stdin);
+                scanf("%ls", (wchar_t *)result);
+                wchar_t *buffer = result;
+                while ((*buffer != L'\0')) {
+                    if (iswalnum(buffer == 0)) {
+                        sleep(999);
+                        printf("Illegal characters!\n");
+                        break;
                     }
-                    buffer++;
+                buffer++;
+                } break;
                 }
-                    break;
-                }
-            } else printf("Some thing worng!\n");
-        }
+            }
+        ft_stdout();
     }
     return result;
 }
 void ft_stdout(void) {
+    while (getchar() != '\n');
     printf(">>>");
     fflush(stdout);
 }
