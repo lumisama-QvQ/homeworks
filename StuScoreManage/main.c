@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <time.h>//延时函数的使用,不同平台可能不一样
 #include <stdbool.h>
 #include <stdbool.h>
@@ -18,6 +19,11 @@
 #define INT (1U << 4)
 #define UINT (1U << 5)
 #define STRING (1U << 6)
+//错误类型
+#define EMPTY (1U << 7)
+#define MISS_TYPE (1U << 8)
+#define NORMAL (1U << 9)
+
 typedef struct subject {
     wchar_t* name;
     int total;
@@ -71,7 +77,7 @@ int def_sub(SUBJECT**);
 //辅助函数
 void sleep(int);//单位毫秒,不能超过1000
 int compare(void*, void*, int);
-void* input_c(int);
+void* input_c(int, int*);
 void ft_stdout(void);
 
 int main(void){
@@ -79,12 +85,34 @@ int main(void){
     GUARD_SUB *guard_subs = NULL;
     STUDENT *students = NULL;
     SUBJECT *subjects = NULL;
+    int status = 0;
     int stu_num = 0;
     int capacity = 0;
+    menu();
     while(1){
-        menu();
-        //choose需主动free
-        int choose = *(int *)input_c(UINT);
+        int choose = 0;
+        void *ptr = NULL;
+        while(1){
+            ptr = (int *)input_c(UINT, &status);
+            getchar();
+            switch (status) {
+                case EMPTY: {
+                    sleep(999);
+                    printf("Can't be empty!\n");
+                    break;
+                }case MISS_TYPE: {
+                    sleep(999);
+                    printf("Please enter a positive integer!\n");
+                    break;
+                }case NORMAL: {
+                    choose = *(int *)ptr;
+                    break;
+                };
+                default:exit(1);
+            }
+            if (status == NORMAL) break;
+            ft_stdout();
+        }
         SUBJECT *subjects = NULL;
         switch (choose) {
             case 0: {
@@ -118,7 +146,6 @@ int main(void){
                 ft_stdout();
             }
         }
-        break;
     }
     return 0;
 }
@@ -160,68 +187,57 @@ void menu(void){
     printf("Please enter your choice:");
     fflush(stdout);
 }
-void* input_c(int mode) {
+
+//input_c会在下一次读取时覆盖上一次值，必须深拷贝！
+//输入错误时，input_c会清空缓冲区
+void* input_c(int mode, int *stats) {
     static INPUT_DUF buffer;
     if (mode == UINT){
-        while (1) {
-            int c = getchar();//check
-            if (c == '\n') {
-                sleep(999);
-                printf("Cannot be empty!\n");
-                sleep(100);
-                printf("Re-enter the error and subsequent content.\n");
+        int c = getchar();//check
+        if (c == '\n') {
+            *stats = EMPTY;
+            return NULL;
+        } else {
+            ungetc(c, stdin);
+            if (scanf("%d", &buffer.input_i) != 1){
+                while (getchar() != '\n');
+                *stats = MISS_TYPE;
+                return NULL;
             } else {
-                ungetc(c, stdin);
-                if (scanf("%d", &buffer.input_i) != 1){
-                    sleep(999);
-                    printf("Please enter a positive integer!\n");
-                    sleep(100);
-                    printf("Re-enter the error and subsequent content.\n");
+                if ( buffer.input_i < 0 ) {
+                    while (getchar() != '\n');
+                    *stats = MISS_TYPE;
+                    return 0;
                 } else {
-                    if ( buffer.input_i < 0 ) {
-                        sleep(999);
-                        printf("Please enter a positive integer\n");
-                        sleep(100);
-                        printf("Re-enter the error and subsequent content.\n");
-                    } else return &buffer.input_i;
-                    }
+                    *stats = NORMAL;
+                    return &buffer.input_i;
                 }
-                ft_stdout();
             }
+        }
     } else if (mode == INT){
-        while(1){
-            int c = getchar();
-            if (c == '\n') {
-                sleep(999);
-                printf("cannot be empty!\n");
-                sleep(100);
-                printf("Re-enter the error and subsequent content");
-                ft_stdout();
-                continue;
+        int c = getchar();
+        if (c == '\n') {
+            *stats = EMPTY;
+            return NULL;
+        } else {
+            ungetc(c, stdin);
+            if (scanf("%d", &buffer.input_i) != 1){
+                while (getchar() != '\n');
+                *stats = MISS_TYPE;
+                return NULL;
             } else {
-                ungetc(c, stdin);
-                if (scanf("%d", &buffer.input_i) != 1){
-                    sleep(999);
-                    printf("Please enter a positive integer!\n");
-                    sleep(100);
-                    printf("Re-enter the error and subsequent content.\n");
-                    ft_stdout();
-                    continue;
-                } else return &buffer.input_i;
+                *stats = NORMAL;
+                return &buffer.input_i;
             }
         }
     } else if (mode == STRING){
         wchar_t *temp;
         temp = (wchar_t *)malloc(sizeof(wchar_t) * 20);//最多10个汉字
-        while (1){
+        if (temp == NULL) exit(1);
             wchar_t c = getchar();
             if (c == '\n') {
-                sleep(999);
-                printf("Cannot be empty!\n");
-                sleep(100);
-                printf("Re-enter the error and subsequent content.\n");
-                ft_stdout();
-                continue;
+            *stats = EMPTY;
+            return NULL;
             } else {
                 ungetc(c, stdin);
                 scanf("%ls", temp);
@@ -229,68 +245,119 @@ void* input_c(int mode) {
                 lp = temp;
                 while ((*lp != L'\0')) {
                     if (iswalnum(lp == 0)) {
-                        sleep(999);
-                        printf("Illegal characters!\n");
-                        sleep(100);
-                        printf("Re-enter the error and subsequent content.\n");
+                        while (getchar() != '\n');
+                        *stats = MISS_TYPE;
+                        return NULL;
                         break;
-                        ft_stdout();
-                        continue;
                     }
                 lp++;
                 }
                 buffer.input_s = (wchar_t *)malloc(sizeof(wchar_t) * wcslen(temp) + 1);
-                if (buffer.input_s == NULL) {
-                    printf("Not enough memory!\n");
-                    sleep(100);
-                    printf("Re-enter the error and subsequent content\n");
-                    exit(1);
-                }
+                if (buffer.input_s == NULL) exit(1);
                 wcscpy(buffer.input_s, temp);
-                return buffer.input_s;
+                *stats = NORMAL;
+                return &buffer.input_s;
             }
-            }
-    } exit(1);
+        }
+        return NULL;
 }
 void ft_stdout(void) {
-    while (getchar() != '\n');
     printf(">>>");
     fflush(stdout);
 }
 int def_sub(SUBJECT **subjects) {
     printf("Enter default subject number\n");
     int num = 0;
-    while(1) {
+    int status = 0;
+    while (1){
         ft_stdout();
-        wchar_t c = getchar();
-        if (c == '\n') {
-            printf("Can't be empty!\n");
-            continue;
-        } else {
-            ungetc(c, stdin);
-            num = *(int *)input_c(UINT);
-            printf("Enter the subject name and total score, separated by a space.\n");
-            while (1) {
-                wchar_t c2 = getchar();
-                if (c2 == '\n') {
-                    printf("Can't be empty!\n");
-                    continue;
-                }else {
-                    SUBJECT *subject = (SUBJECT *)malloc(sizeof(SUBJECT));
-                    int count = 0;
-                    int capacity = num;
-                    *subjects = (SUBJECT *)malloc(sizeof(SUBJECT) * num);
-                    for (int i = 0; i < num ; i++) {
-                        wchar_t *name = input_c(STRING);
-                        wcscpy(subject->name, name);
-                        int *def_score = input_c(UINT);
-                        subject->score = *def_score;
-                        add_sub(subjects, subject, &count, &capacity);
-                    }
-                    break;
-                }
-            } break;
+        void *ptr = NULL;
+        ptr = (int *)input_c(UINT, &status);
+        getchar();
+        switch (status) {
+            case EMPTY:{
+                sleep(999);
+                printf("Can't be empty\n");
+                break;
+            }case MISS_TYPE:{
+                sleep(999);
+                printf("Please enter a positive integer!\n");
+                break;
+            }case NORMAL: {
+                num = *(int *)ptr;
+                break;
+            }
+            default:exit(1);
         }
+        if (status == NORMAL) break;
     }
+    printf("Enter the subject name and total score, separated by a space.\n");
+    SUBJECT subject;
+    wchar_t temp_name[20];
+    subject.name = temp_name;
+    int count = 0;
+    int capacity = num;
+    *subjects = (SUBJECT *)malloc(sizeof(SUBJECT) * num);
+    for (int i = 0; i < num ; i++) {
+        wchar_t *name;
+        ft_stdout();
+        name = (wchar_t *)input_c(STRING, &status);
+        switch (status) {
+            case EMPTY:{
+                sleep(999);
+                printf("can't be empty!\n");
+                sleep(400);
+                printf("Please input all again!\n");
+                i = 0;
+                continue;
+            }case MISS_TYPE: {
+                sleep(999);
+                printf("Illegal characters!\n");
+                sleep(300);
+                printf("Please input all again!\n");
+                i = 0;
+                continue;
+            }case NORMAL:break;
+                default:exit(1);
+        }
+        wcscpy(subject.name, name);
+        int *def_score = 0;
+        def_score =  (int *)input_c(UINT, &status);
+        switch (status) {
+            case MISS_TYPE: {
+                sleep(999);
+                printf("Please enter a positive integer!\n");
+                sleep(500);
+                printf("Please input all again!\n");
+                i = 0;
+                continue;
+                case EMPTY:{
+                    sleep(999);
+                    printf("Score can't be empty!\n");
+                    sleep(500);
+                    printf("Please input all again!\n");
+                    i = 0;
+                    continue;
+                }
+            }case NORMAL:{}
+            default:exit(1);
+        }
+        subject.score = *def_score;
+        add_sub(subjects, &subject, &count, &capacity);
+    }
+    getchar();
     return num;
+}
+void add_sub(SUBJECT **subjects, SUBJECT *subject, int *count, int *capacity) {
+    if ( *count >= *capacity) {
+        *capacity += 2;
+        SUBJECT *new_ptr = (SUBJECT *)realloc(*subjects, sizeof(SUBJECT) * *capacity);
+        if (new_ptr == NULL) exit(1);
+        *subjects = new_ptr;
+    }
+    SUBJECT *temp  = &(*subjects)[*count];
+    temp->score = subject->score;
+    temp->name = (wchar_t *)malloc(sizeof(wchar_t) * (wcslen(subject->name) + 1));
+    wcscpy(temp->name, subject->name);
+    (*count)++;
 }
