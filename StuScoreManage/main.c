@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
+#include <threads.h>
 #include <time.h>//延时函数的使用,不同平台可能不一样
 #include <stdbool.h>
 #include <stdbool.h>
@@ -8,22 +9,29 @@
 #include <wchar.h>
 #include <wctype.h>
 #include <locale.h>
-
+//状态
+#define ON 1
+#define OFF 0
+#define SETTING 2
 //升降序模式
-#define ASCEND (1U << 0)
-#define DESCEND (1U << 1)
+#define ASCEND 3
+#define DESCEND 4
 //查询/排序模式
-#define NAME (1U << 2)
-#define ID (1U << 3)
+#define NAME 5
+#define ID 6
 //检查模式
-#define INT (1U << 4)
-#define UINT (1U << 5)
-#define STRING (1U << 6)
+#define INT 7
+#define UINT 8
+#define FLOAT 9
+#define STRING 10
 //错误类型
-#define EMPTY (1U << 7)
-#define MISS_TYPE (1U << 8)
-#define NORMAL (1U << 9)
-
+#define EMPTY 11
+#define MISS_TYPE 12
+#define NORMAL 13
+//修改类型
+#define DEL 14
+#define ADD 15
+#define CHANGE 16
 typedef struct subject {
     wchar_t* name;
     int total;
@@ -58,6 +66,7 @@ typedef struct guard_sub {
 typedef union {
     int input_i;
     wchar_t* input_s;
+    float input_f;
 } INPUT_DUF;
 //功能函数
 void menu(void);
@@ -65,7 +74,7 @@ void input_sub(SUBJECT**);
 void del_sub(SUBJECT**,int);
 void add_sub(SUBJECT**, SUBJECT*, int*, int*);
 void change_sub(SUBJECT**,int, SUBJECT*);
-void add_stu(STUDENT**, SUBJECT*, wchar_t*, int, float, int, int* , int*);
+int add_stu(STUDENT**, SUBJECT*, int* , int*, int);
 void read_doc(wchar_t*);
 void rank(STUDENT*, int);
 void search(void*, STUDENT*, int);
@@ -74,6 +83,7 @@ void output_stu(STUDENT*);
 void output_sub(SUBJECT*);
 void write_doc(STUDENT*);
 int def_sub(SUBJECT**);
+void sub_cpy(SUBJECT*, SUBJECT*, int);
 //辅助函数
 void sleep(int);//单位毫秒,不能超过1000
 int compare(void*, void*, int);
@@ -84,10 +94,11 @@ int main(void){
     //init
     GUARD_SUB *guard_subs = NULL;
     STUDENT *students = NULL;
-    SUBJECT *subjects = NULL;
+    SUBJECT *def_subjects = NULL;
     int status = 0;
-    int stu_num = 0;
-    int capacity = 0;
+    int sub_count = 0;
+    int stu_count = 0;
+    int stu_capacity = 0;
     menu();
     while(1){
         int choose = 0;
@@ -113,7 +124,6 @@ int main(void){
             if (status == NORMAL) break;
             ft_stdout();
         }
-        SUBJECT *subjects = NULL;
         switch (choose) {
             case 0: {
                 printf("Exit");
@@ -125,9 +135,22 @@ int main(void){
                 break;
             }
             case 1: {
-                //subjects需主动free
-                def_sub(&subjects);
-
+                //subjects及其内容需主动free
+                sub_count = def_sub(&def_subjects);
+                printf("Now, ");
+                fflush(stdout);
+                sleep(400);
+                SUBJECT *temp_subjects = NULL;
+                printf("Input students information.\n");
+                printf("Input Exit to quit\nInput setting to change subjects of current student\n");
+                //temp_subjects及其内容需手动释放
+                sub_cpy(temp_subjects, def_subjects, sub_count);
+                int button = ON;
+                while (button){
+                    //students及其内容需要手动free
+                    button = add_stu(&students, temp_subjects,&stu_count, &stu_capacity, sub_count);
+                    if (button == SETTING) {}
+                }
             }
             case 2: {}
             case 3: {}
@@ -187,7 +210,6 @@ void menu(void){
     printf("Please enter your choice:");
     fflush(stdout);
 }
-
 //input_c会在下一次读取时覆盖上一次值，必须深拷贝！
 //输入错误时，input_c会清空缓冲区
 void* input_c(int mode, int *stats) {
@@ -258,6 +280,23 @@ void* input_c(int mode, int *stats) {
                 *stats = NORMAL;
                 return &buffer.input_s;
             }
+        }else if (mode == FLOAT) {
+            static INPUT_DUF temp;
+            temp.input_f = getchar();
+            if (temp.input_f == '\n') {
+                *stats = EMPTY;
+                return NULL;
+            } else {
+                ungetc(temp.input_f, stdin);
+                if (scanf("%f", &temp.input_f) != 1) {
+                    while (getchar() != '\n');
+                    *stats = MISS_TYPE;
+                    return NULL;
+                }else{
+                    *stats = NORMAL;
+                    return &temp.input_f;
+                }
+            }
         }
         return NULL;
 }
@@ -321,8 +360,8 @@ int def_sub(SUBJECT **subjects) {
                 default:exit(1);
         }
         wcscpy(subject.name, name);
-        int *def_score = 0;
-        def_score =  (int *)input_c(UINT, &status);
+        int *def_total = 0;
+        def_total =  (int *)input_c(UINT, &status);
         switch (status) {
             case MISS_TYPE: {
                 sleep(999);
@@ -342,7 +381,7 @@ int def_sub(SUBJECT **subjects) {
             }case NORMAL:{}
             default:exit(1);
         }
-        subject.score = *def_score;
+        subject.total = *def_total;
         add_sub(subjects, &subject, &count, &capacity);
     }
     getchar();
@@ -360,4 +399,95 @@ void add_sub(SUBJECT **subjects, SUBJECT *subject, int *count, int *capacity) {
     temp->name = (wchar_t *)malloc(sizeof(wchar_t) * (wcslen(subject->name) + 1));
     wcscpy(temp->name, subject->name);
     (*count)++;
+}
+int add_stu(STUDENT **students, SUBJECT *subjects, int *stu_count, int *capacity, int sub_count) {
+    int status = 0;
+    wchar_t *temp;
+    while(1) {
+        ft_stdout();
+        temp = (wchar_t *)input_c(STRING, &status);
+        switch (status) {
+            case EMPTY:{
+                sleep(999);
+                printf("Can't be empty!\n");
+                sleep(300);
+                printf("Please input all again!\n");
+                free(temp);
+                continue;
+            }case MISS_TYPE:{
+                sleep(999);
+                printf("Illegal characters!\n");
+                sleep(300);
+                printf("Please input all again!\n");
+                free(temp);
+                continue;
+            }case NORMAL: break;
+            default:exit(1);
+        }
+        if (status == NORMAL) break;
+    }
+    if (wcscmp(temp, (wchar_t *)"Exit") || wcscmp(temp, (wchar_t *)"exit")) return OFF;
+    if (wcscmp(temp, (wchar_t *)"settings") || wcscmp(temp, (wchar_t *)"Setting")) {
+        while (getchar() != '\n');
+        return SETTING;
+    }
+    if (*stu_count >= *capacity) {
+        *capacity += 8;
+        STUDENT *ptr = (STUDENT *)realloc(*students, *capacity);
+        if (ptr == NULL) exit(1);
+        *students = ptr;
+    }
+    STUDENT *student = &(*students)[*stu_count];
+    student->name = (wchar_t *)malloc(sizeof(wchar_t *) + (wcslen(temp) + 1));
+    if (student->name == NULL) exit(1);
+    wcscpy(student->name, temp);
+    student->Subjects = (SUBJECT *)malloc(sizeof(*subjects));
+    if (student->Subjects == NULL) exit(1);
+    sub_cpy(student->Subjects, subjects, sub_count);
+    student->sub_num = sub_count;
+    int score = 0;
+    for (int i = 0; i < *stu_count; i++){
+        while (1){
+            score = *(float *)input_c(FLOAT, &status);
+            switch (status) {
+                case EMPTY:{
+                    sleep(999);
+                    printf("Format error!\n");
+                    sleep(200);
+                    printf("Please input all again.\n");
+                    i = 0;
+                    continue;
+                }case MISS_TYPE:{
+                    sleep(999);
+                    printf("Illegal characters\n");
+                    sleep(200);
+                    printf("Please input all again.\n");
+                    i = 0;
+                    continue;
+                }case NORMAL:break;
+                default:exit(1);
+            }if (status == NORMAL) break;
+        }
+        if (score == -1) student->Subjects[i].attend = false;
+        else if (score < 0 || score > subjects[i].total) {
+            sleep(999);
+            printf("Score anomaly!\n");
+            sleep(200);
+            printf("Please input all again.\n");
+            i = 0;
+            continue;
+        }else {
+            student->att_num++;
+            student->total += score;
+            student->Subjects[i].score = score;
+        }
+    }
+    return ON;
+}
+void sub_cpy(SUBJECT *subjects_to, SUBJECT *subjects_from, int count) {
+    for (int i = 0; i < count; i++){
+        subjects_to[i].name = (wchar_t *)malloc(sizeof(wchar_t) * (wcslen(subjects_from[i].name) + 1));
+        if (subjects_to[i].name == NULL) exit(1);
+        wcscpy(subjects_to[i].name, subjects_from[i].name);
+    }
 }

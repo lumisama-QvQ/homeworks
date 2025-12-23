@@ -94,13 +94,14 @@
 		类型：
 		 int
 		 wchat_t
+		 float
     需要函数：
         主菜单打印(void)
         输入学科(**struct 学科)
         删除学科(**struct 学科，int 删除序号)
         替换学科(**struct 学科, int 替换序号, *struct 替换学科)
         添加学科(**struct 学科, *struct 添加的学科, int 学科数量，int 容量)
-        添加学生(**struct 学生, *struct 学科, *char 姓名, int 学科数量, float 总分,int 实际参与， int *学生数量， int *容量)
+        int 添加学生(**struct 学生, *struct 学科, *char 姓名, int 学科数量, float 总分,int 实际参与， int *学生数量， int *容量)//输出添加状态
         更新维护列表(**struct 维护列表, *struct 当前学科列表)
         排名系统(*struct 学生， 模式)
         成绩表系统(unsigned int 模式, *struct 学生)
@@ -115,6 +116,7 @@
         输入检查(int 模式, void* 内容)
         格式化输入框(模式，状态)
         默认学科(**struct 学科)
+        学科复制(struct* 学科1, struct* 学科2, int 学科数量)
     全局标签：
     	升降序
     		- 升序
